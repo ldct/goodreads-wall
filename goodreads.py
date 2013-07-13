@@ -72,23 +72,18 @@ class AccessTokenHandler(sessions.BaseHandler):
                         access_token['oauth_token_secret'])
     client = oauth.Client(consumer, token)
 
-    """
-    print "getting user id...",
-    response, content = client.request('%s/api/auth_user' % url, 'GET')
-    uid = etree.fromstring(content).find('user').get('id')
-    print "got ", uid
-    """
+    response, content = client.request('%s/review/list?format=xml&v=2&per_page=200&shelf=read' % url,'GET')
 
-    print "getting shelf...",
-    response, content = client.request('%s/review/list?format=xml&v=2&per_page=200' % url,'GET')
-    print "done, got status", response['status'] #200 or bust
+    def rreplace(s, old, new, occurrence=1):
+      li = s.rsplit(old, occurrence)
+      return new.join(li)
 
     proc = []
     for review in etree.fromstring(content).find('reviews'):
       book = review.find('book')
-      image_tail = book.findtext('image_url')[28:]
-      image = "http://d.gr-assets.com/books" + image_tail.replace("l/", "l/")
-      proc.append({'image': image, 'title': book.findtext('title'), 'isbn': book.findtext('isbn')})
+      rating = review.findtext('rating')
+      image = book.findtext('image_url')
+      proc.append({'image': rreplace(image, 'm/', 'l/'), 'title': book.findtext('title'), 'isbn': book.findtext('isbn'), 'rating': rating})
 
     get_cover_queue = []
     covered = []
@@ -113,7 +108,7 @@ class AccessTokenHandler(sessions.BaseHandler):
       j = json.loads("".join(result))      
       try:
         if j['totalItems'] == 0:
-          self.response.write("<pre> %s: not on google books </pre>" % (book['title']))
+          #self.response.write("<pre> %s: not on google books </pre>" % (book['title']))
           continue #todo: handle somehow!
       except:
         self.response.write(result)
@@ -124,12 +119,58 @@ class AccessTokenHandler(sessions.BaseHandler):
       try:
         image = items[0]["volumeInfo"]["imageLinks"]["thumbnail"]
         #image = image.replace("zoom=1", "zoom=0") #todo: try to append
-        covered.append({'image': image, 'title': title})
+        covered.append({'image': image, 'title': title, 'rating': 0})
       except:
-        self.response.write("no images for " + title)
+        #self.response.write("no images for " + title)
+        continue
 
+    seq = ""
     for book in covered:
-      self.response.write("<img src='%s' />" % (book['image']))
+      seq += '{"image": "%s", "title": "%s", "rating": "%s"},\n' % (book['image'], book['title'], book['rating'])
+
+    template = """
+<script>
+books = [
+%s
+]
+</script>
+
+<style>
+img {
+  width:148px;
+  height:223px;
+  padding:1px;
+}
+img.rated-4, img.rated-5 {
+  width:298px;
+  height:448px;
+  padding:1px;
+}
+</style>
+
+<script src="../isicp/js/jquery.min.js"></script>
+<script src="http://isotope.metafizzy.co/jquery.isotope.min.js"></script>
+
+<body>
+  <div id="container"></div>
+  <script>
+  for (b in books) {
+    img = $("<div class='item'>").append($("<img>", {'src': books[b].image, 'title': books[b].title, 'class': "rated-" + books[b].rating}))
+
+    $("#container").append(img);
+  }
+
+  $("#container").isotope({
+    itemSelector: '.item',
+    sortBy: 'random',
+    masonry: {
+      columnWidth: 50
+    },
+  });
+  </script>
+</body>
+    """
+    self.response.write(template % seq)
 
 app = webapp2.WSGIApplication(
   [('/goodreads/request', RequestTokenHandler),
