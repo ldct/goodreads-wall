@@ -16,16 +16,18 @@ import urlparse
 
 from google.appengine.api import urlfetch
 
+with open("goodreads/DEV_KEY_SECRET") as f:
+  DEV_KEY_SECRET = f.read()
 
 url = 'http://www.goodreads.com'
 request_token_url = '%s/oauth/request_token' % url
 authorize_url = '%s/oauth/authorize' % url
 access_token_url = '%s/oauth/access_token' % url
 
-DEV_KEY = 'A1114dcpWwEqczYXxsd69A'
+DEV_KEY = 'Wv8SrNCmt7v9V4zt8xQw'
 consumer = oauth.Consumer(
   key= DEV_KEY,
-  secret='pdf5ExZ8eXg7n4nGt7Tu9s2s2LMqUD080EwEej6xs')
+  secret=DEV_KEY_SECRET)
 
 class RequestTokenPair(ndb.Model):
     oauth_token = ndb.StringProperty()
