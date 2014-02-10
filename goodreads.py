@@ -1,7 +1,7 @@
 import os, logging
 
 import webapp2
-from sessions import sessions
+from libs.sessions import sessions
 
 from google.appengine.api.urlfetch import fetch, GET, POST
 from urllib import urlencode, urlopen
@@ -11,12 +11,12 @@ from google.appengine.ext import ndb
 
 from lxml import etree
 
-import oauth2 as oauth
+import libs.oauth2 as oauth
 import urlparse
 
 from google.appengine.api import urlfetch
 
-with open("goodreads/DEV_KEY_SECRET") as f:
+with open("goodreads-wall/DEV_KEY_SECRET") as f:
   DEV_KEY_SECRET = f.read()
 
 url = 'http://www.goodreads.com'
@@ -74,7 +74,7 @@ class AccessTokenHandler(sessions.BaseHandler):
                         access_token['oauth_token_secret'])
     client = oauth.Client(consumer, token)
 
-    response, content = client.request('%s/review/list?format=xml&v=2&per_page=200&shelf=read' % url,'GET')
+    response, content = client.request('%s/review/list?format=xml&v=2&per_page=100&shelf=read' % url,'GET')
 
     def rreplace(s, old, new, occurrence=1):
       li = s.rsplit(old, occurrence)
@@ -175,6 +175,6 @@ img.rated-4, img.rated-5 {
     self.response.write(template % seq)
 
 app = webapp2.WSGIApplication(
-  [('/goodreads/request', RequestTokenHandler),
-   ('/goodreads/access', AccessTokenHandler)],
+  [('/goodreads-wall/request', RequestTokenHandler),
+   ('/goodreads-wall/access', AccessTokenHandler)],
   debug=True, config=sessions.config)
